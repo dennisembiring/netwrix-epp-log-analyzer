@@ -10,7 +10,7 @@ columns, so files with slightly different headers can still be combined.
 import re
 from pathlib import Path
 
-from . import db
+from . import config, db
 
 
 def normalize_col(name: str) -> str:
@@ -18,6 +18,9 @@ def normalize_col(name: str) -> str:
     name = re.sub(r"[^\w]+", "_", name)
     name = re.sub(r"_+", "_", name).strip("_")
     return name or "col"
+
+
+CAP_NORMALIZED_COLUMNS = {normalize_col(h) for h in config.CAP_RAW_COLUMNS}
 
 
 def _quote_lit(path: str) -> str:
@@ -31,6 +34,19 @@ def read_headers(con, path: str) -> list[str]:
         f"SAMPLE_SIZE=1000, IGNORE_ERRORS=TRUE) LIMIT 0"
     )
     return list(rel.columns)
+
+
+def check_cap_schema(raw_columns: list[str]) -> dict:
+    """Compare a CSV's headers against the expected CAP schema.
+
+    Returns which expected CAP columns are missing (breaks field mapping)
+    and which extra columns are present (harmless, just extra data).
+    """
+    normalized = {normalize_col(c) for c in raw_columns}
+    return {
+        "missing": sorted(CAP_NORMALIZED_COLUMNS - normalized),
+        "extra": sorted(normalized - CAP_NORMALIZED_COLUMNS),
+    }
 
 
 def import_files(con, paths: list[str], label_prefix: str | None = None) -> list[dict]:
@@ -117,4 +133,5 @@ def _import_single(con, path: str, label_prefix: str | None) -> dict:
         "file": path,
         "rows": row_count,
         "columns": list(norm_map.values()),
+        "schema_check": check_cap_schema(raw_columns),
     }

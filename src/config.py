@@ -8,26 +8,49 @@ UPLOAD_DIR = DATA_DIR / "uploads"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-APP_TITLE = "Netwrix Endpoint Protector Log Analyzer"
+APP_TITLE = "Netwrix Endpoint Protector - Content Aware Protection Log Analyzer"
 
-# Semantic fields the app needs for filtering/dashboards. The user maps these
-# to whatever raw column names their specific EPP CSV export uses, since
-# column names vary across EPP versions/languages/report types.
-SEMANTIC_FIELDS = {
-    "event_time": "Waktu event (tanggal & jam)",
-    "user": "User / akun",
-    "endpoint": "Nama komputer / endpoint",
-    "domain": "Domain",
-    "policy": "Nama policy",
-    "action": "Action / status (Blocked, Allowed, Detected, dll)",
-    "event_type": "Jenis event (Content Aware, Device Control, dll)",
-    "file_name": "Nama file",
-    "file_path": "Path file",
-    "file_extension": "Ekstensi file",
-    "file_size": "Ukuran file",
-    "application": "Aplikasi / proses",
-    "destination_type": "Tipe tujuan (USB, Cloud, Email, dll)",
-    "destination": "Detail tujuan (drive/URL/path spesifik)",
+# Raw CSV headers for Netwrix Endpoint Protector Content Aware Protection
+# (CAP) report exports. This app is scoped to CAP exports only, so the
+# mapping below is fixed and never edited via UI.
+CAP_RAW_COLUMNS = [
+    "Event",
+    "Event Time",
+    "Machine Name",
+    "Source IP-address",
+    "Client",
+    "Source",
+    "Content Policy",
+    "Item Type",
+    "Matched Item",
+    "Item Details",
+    "Destination",
+    "Destination Type",
+    "Destination Details",
+    "Email Sender",
+    "Email Subject",
+    "Filesize(kb)",
+    "File Hash",
+    "Vid",
+    "Pid",
+    "Serial Number",
+    "Os",
+    "Log",
+    "Justification",
+]
+
+# Semantic field -> normalized column name (see ingest.normalize_col). Fixed
+# because CAP exports always use the same schema, so no manual mapping step
+# is needed.
+FIELD_MAPPING = {
+    "event_time": "event_time",
+    "user": "client",
+    "endpoint": "machine_name",
+    "policy": "content_policy",
+    "action": "event",
+    "event_type": "item_type",
+    "file_path": "source",
+    "file_size": "filesize_kb",
+    "destination_type": "destination_type",
+    "destination": "destination",
 }
-
-REQUIRED_SEMANTIC_FIELDS = {"event_time", "user", "endpoint", "action"}

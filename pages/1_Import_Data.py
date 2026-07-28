@@ -10,13 +10,34 @@ con = db.get_connection()
 
 st.title("📥 Import Data")
 st.caption(
-    "Import satu atau beberapa file CSV hasil ekspor Netwrix Endpoint Protector. "
-    "Untuk dataset sangat besar (jutaan baris), gunakan mode **Path lokal** — "
-    "DuckDB membaca langsung dari disk tanpa memuat seluruh file ke memori."
+    "Import satu atau beberapa file CSV hasil ekspor **Content Aware Protection "
+    "(CAP)** Netwrix Endpoint Protector. Kolom sudah dipetakan otomatis sesuai "
+    "skema CAP — tidak perlu pemetaan manual. Untuk dataset sangat besar "
+    "(jutaan baris), gunakan mode **Path lokal** — DuckDB membaca langsung dari "
+    "disk tanpa memuat seluruh file ke memori."
 )
 
-tab_upload, tab_path, tab_mapping, tab_manage = st.tabs(
-    ["Upload File", "Path Lokal / Folder", "Field Mapping", "Kelola Dataset"]
+
+def _show_results(results: list[dict]) -> None:
+    st.success(f"Berhasil mengimpor {len(results)} file.")
+    for r in results:
+        st.write(f"- `{Path(r['file']).name}` — {r['rows']:,} baris, {len(r['columns'])} kolom")
+        check = r["schema_check"]
+        if check["missing"]:
+            st.warning(
+                f"  Kolom CAP yang tidak ditemukan di file ini (filter terkait "
+                f"tidak akan terisi): {', '.join(check['missing'])}"
+            )
+        if check["extra"]:
+            st.caption(
+                f"  Kolom tambahan di luar skema CAP standar (tetap disimpan, "
+                f"bisa dipakai lewat SQL Query/full-text search): "
+                f"{', '.join(check['extra'])}"
+            )
+
+
+tab_upload, tab_path, tab_schema, tab_manage = st.tabs(
+    ["Upload File", "Path Lokal / Folder", "Skema CAP", "Kelola Dataset"]
 )
 
 with tab_upload:
@@ -35,9 +56,7 @@ with tab_upload:
             results.extend(ingest.import_files(con, [str(dest)]))
             progress.progress((i + 1) / len(uploaded), text=f"Mengimpor {uf.name}...")
         progress.empty()
-        st.success(f"Berhasil mengimpor {len(results)} file.")
-        for r in results:
-            st.write(f"- `{Path(r['file']).name}` — {r['rows']:,} baris, {len(r['columns'])} kolom")
+        _show_results(results)
         st.rerun()
 
 with tab_path:
@@ -72,53 +91,43 @@ with tab_path:
                 results.extend(ingest.import_files(con, [path]))
                 progress.progress((i + 1) / len(candidates), text=f"Mengimpor {Path(path).name}...")
             progress.empty()
-            st.success(f"Berhasil mengimpor {len(results)} file.")
-            for r in results:
-                st.write(f"- `{Path(r['file']).name}` — {r['rows']:,} baris, {len(r['columns'])} kolom")
+            _show_results(results)
             st.session_state.pop("_import_candidates", None)
             st.rerun()
     elif path_input:
         st.warning("Tidak ada file CSV ditemukan pada path tersebut.")
 
-with tab_mapping:
-    st.subheader("Field Mapping")
+with tab_schema:
+    st.subheader("Skema CAP yang didukung")
     st.caption(
-        "Petakan kolom mentah dari CSV ke field semantik yang dipakai dashboard & "
-        "filter. Mapping ini berlaku untuk semua dataset yang sudah/akan diimpor."
+        "Aplikasi ini khusus untuk ekspor **Content Aware Protection (CAP)** "
+        "Netwrix Endpoint Protector. Kolom berikut dipetakan otomatis — tidak "
+        "ada langkah pemetaan manual."
     )
-    columns = db.events_columns(con)
-    columns = [c for c in columns if c not in ("dataset_id", "source_file", "ingested_at")]
+    st.code("\n".join(config.CAP_RAW_COLUMNS), language="text")
 
-    if not columns:
-        st.info("Import setidaknya satu file CSV terlebih dahulu untuk mengatur mapping.")
-    else:
-        current = db.get_mapping(con)
-        new_mapping = {}
-        options = ["(tidak ada)"] + columns
-        cols_ui = st.columns(2)
-        for i, (field, desc) in enumerate(config.SEMANTIC_FIELDS.items()):
-            target_col = cols_ui[i % 2]
-            default = current.get(field)
-            idx = options.index(default) if default in options else 0
-            choice = target_col.selectbox(
-                f"{field} — {desc}",
-                options,
-                index=idx,
-                key=f"map_{field}",
-            )
-            if choice != "(tidak ada)":
-                new_mapping[field] = choice
-
-        missing_required = config.REQUIRED_SEMANTIC_FIELDS - set(new_mapping)
-        if missing_required:
-            st.warning(
-                "Field wajib belum dipetakan: " + ", ".join(sorted(missing_required))
-            )
-
-        if st.button("Simpan Mapping", type="primary"):
-            db.set_mapping(con, new_mapping)
-            st.success("Mapping tersimpan.")
-            st.rerun()
+    st.markdown("**Field yang dipakai untuk filter & dashboard:**")
+    mapping_display = {
+        "Waktu event": "Event Time",
+        "User": "Client",
+        "Endpoint": "Machine Name",
+        "Policy": "Content Policy",
+        "Action (Blocked/Allowed/Detected)": "Event",
+        "Item Type": "Item Type",
+        "File path": "Source",
+        "Ukuran file": "Filesize(kb)",
+        "Destination Type": "Destination Type",
+        "Destination": "Destination",
+    }
+    st.dataframe(
+        {"Field": list(mapping_display.keys()), "Kolom CSV": list(mapping_display.values())},
+        hide_index=True,
+        width="stretch",
+    )
+    st.caption(
+        "Kolom lain di luar daftar ini tetap tersimpan di tabel `events` dan bisa "
+        "diakses lewat halaman SQL Query atau pencarian full-text."
+    )
 
 with tab_manage:
     st.subheader("Dataset yang telah diimpor")
@@ -140,7 +149,7 @@ with tab_manage:
         st.subheader("Refresh total")
         st.caption(
             "Hapus SEMUA dataset & event yang tersimpan. Gunakan ini untuk memulai "
-            "analisis dari nol dengan data baru. Field mapping tidak ikut terhapus."
+            "analisis dari nol dengan data baru."
         )
         confirm_wipe = st.checkbox(
             "Saya yakin ingin menghapus semua dataset & event", key="confirm_wipe_all"

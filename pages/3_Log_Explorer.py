@@ -1,20 +1,16 @@
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
-from src import db, export_utils, queries, ui_filters
+from src import config, db, export_utils, queries, ui_filters
 
 st.set_page_config(page_title="Log Explorer", page_icon="🔍", layout="wide")
 con = db.get_connection()
-mapping = db.get_mapping(con)
+mapping = config.FIELD_MAPPING
 
 st.title("🔍 Log Explorer")
 
 if not db.table_exists(con, "events"):
     st.info("Belum ada data. Import data terlebih dahulu di halaman Import Data.")
-    st.stop()
-
-if not mapping:
-    st.warning("Field mapping belum diatur. Buka halaman Import Data > Field Mapping.")
     st.stop()
 
 fs = ui_filters.render_sidebar_filters(con, mapping)

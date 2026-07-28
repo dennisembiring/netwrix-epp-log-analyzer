@@ -1,5 +1,3 @@
-import json
-
 import duckdb
 import streamlit as st
 
@@ -28,14 +26,6 @@ def _init_schema(con):
         )
         """
     )
-    con.execute(
-        """
-        CREATE TABLE IF NOT EXISTS app_config (
-            key VARCHAR PRIMARY KEY,
-            value VARCHAR
-        )
-        """
-    )
 
 
 def table_exists(con, name: str) -> bool:
@@ -50,25 +40,6 @@ def events_columns(con) -> list[str]:
     if not table_exists(con, "events"):
         return []
     return [r[1] for r in con.execute("PRAGMA table_info('events')").fetchall()]
-
-
-def get_mapping(con) -> dict:
-    row = con.execute(
-        "SELECT value FROM app_config WHERE key = 'field_mapping'"
-    ).fetchone()
-    if not row:
-        return {}
-    return json.loads(row[0])
-
-
-def set_mapping(con, mapping: dict) -> None:
-    con.execute(
-        """
-        INSERT INTO app_config (key, value) VALUES ('field_mapping', ?)
-        ON CONFLICT (key) DO UPDATE SET value = excluded.value
-        """,
-        [json.dumps(mapping)],
-    )
 
 
 def list_datasets(con):

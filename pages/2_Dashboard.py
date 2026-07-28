@@ -1,20 +1,16 @@
 import plotly.express as px
 import streamlit as st
 
-from src import db, queries, ui_filters
+from src import config, db, queries, ui_filters
 
 st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
 con = db.get_connection()
-mapping = db.get_mapping(con)
+mapping = config.FIELD_MAPPING
 
 st.title("📊 Dashboard")
 
 if not db.table_exists(con, "events"):
     st.info("Belum ada data. Import data terlebih dahulu di halaman Import Data.")
-    st.stop()
-
-if not mapping:
-    st.warning("Field mapping belum diatur. Buka halaman Import Data > Field Mapping.")
     st.stop()
 
 fs = ui_filters.render_sidebar_filters(con, mapping)

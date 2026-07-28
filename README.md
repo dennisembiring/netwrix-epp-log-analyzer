@@ -1,29 +1,45 @@
-# Netwrix Endpoint Protector Log Analyzer
+# Netwrix Endpoint Protector — Content Aware Protection (CAP) Log Analyzer
 
 Aplikasi web lokal untuk mengimpor, mengelola, dan menganalisis jutaan hingga
-puluhan juta event hasil ekspor CSV **Netwrix Endpoint Protector** — tanpa
-batasan baris Microsoft Excel.
+puluhan juta event hasil ekspor CSV **Content Aware Protection (CAP)** dari
+Netwrix Endpoint Protector — tanpa batasan baris Microsoft Excel.
 
 Dibangun dengan **Streamlit** (UI) dan **DuckDB** (query engine kolumnar) yang
 membaca CSV langsung dari disk tanpa memuat seluruh data ke memori Python,
 sehingga tetap ringan untuk dataset berskala besar.
+
+Aplikasi ini **khusus untuk skema ekspor CAP** — kolom sudah dipetakan secara
+tetap di kode, jadi tidak ada langkah pemetaan kolom manual sama sekali.
+
+## Skema CSV yang didukung
+
+```
+Event, Event Time, Machine Name, Source IP-address, Client, Source,
+Content Policy, Item Type, Matched Item, Item Details, Destination,
+Destination Type, Destination Details, Email Sender, Email Subject,
+Filesize(kb), File Hash, Vid, Pid, Serial Number, Os, Log, Justification
+```
+
+Kolom di luar daftar ini tetap ikut disimpan (bisa diakses lewat SQL Query
+atau full-text search), hanya tidak dipakai untuk filter/dashboard bawaan.
 
 ## Fitur
 
 - **Import fleksibel** — upload lewat browser (hingga 5 GB) atau baca langsung
   dari path lokal/glob pattern (`/data/logs/*.csv`), tanpa batas ukuran karena
   dibaca langsung oleh DuckDB dari disk.
-- **Multi-file, skema berkembang otomatis** — file CSV dengan kolom yang
-  sedikit berbeda antar ekspor tetap bisa digabung; kolom baru otomatis
-  ditambahkan ke tabel gabungan.
-- **Field mapping** — petakan kolom mentah CSV (yang bisa berbeda-beda nama
-  antar versi/laporan EPP) ke field semantik (user, endpoint, policy, action,
-  waktu, dsb) lewat UI, tanpa mengubah kode.
+- **Tanpa mapping manual** — kolom CAP dipetakan otomatis ke field semantik
+  (user, endpoint, policy, action, waktu, destination, dll) langsung di kode.
+- **Validasi skema saat import** — kalau file CSV kekurangan kolom CAP yang
+  diharapkan, aplikasi menampilkan peringatan (bukan blocking) sehingga tetap
+  jelas filter mana yang mungkin tidak terisi.
+- **Multi-file, skema berkembang otomatis** — file CSV dengan kolom tambahan
+  di luar skema CAP standar tetap bisa digabung tanpa error.
 - **Dashboard interaktif** — tren event dari waktu ke waktu, breakdown
   Content Aware (Blocked/Allowed/Detected), top user/endpoint/policy.
 - **Log Explorer** — filter multi-kriteria (tanggal, user, endpoint, policy,
-  action, destination, ekstensi file) + pencarian full-text + tabel data besar
-  (streamlit-aggrid) dengan paginasi.
+  action, item type, destination/destination type, ekstensi file) + pencarian
+  full-text + tabel data besar (streamlit-aggrid) dengan paginasi.
 - **SQL Query** — jalankan query SQL bebas (read-only) terhadap seluruh data.
 - **Reports & Export** — ekspor hasil analisis ke CSV, Excel, atau PDF.
 - **Kelola dataset** — hapus dataset satu per satu, atau reset total untuk
@@ -48,18 +64,18 @@ sehingga tetap ringan untuk dataset berskala besar.
 .
 ├── app.py                   # Halaman utama (overview & navigasi)
 ├── pages/
-│   ├── 1_Import_Data.py     # Upload/path import + field mapping + kelola dataset
+│   ├── 1_Import_Data.py     # Upload/path import + info skema CAP + kelola dataset
 │   ├── 2_Dashboard.py       # Tren event & statistik Content Aware
 │   ├── 3_Log_Explorer.py    # Filter, full-text search, tabel data besar
 │   ├── 4_SQL_Query.py       # Query SQL bebas (read-only)
 │   └── 5_Reports.py         # Ringkasan & ekspor CSV/Excel/PDF
 ├── src/
-│   ├── config.py            # Path & daftar field semantik
-│   ├── db.py                # Koneksi DuckDB, skema, mapping, kelola dataset
-│   ├── ingest.py             # Logika import CSV (skema berkembang otomatis)
-│   ├── queries.py            # Filter dinamis & query agregasi
-│   ├── ui_filters.py         # Widget filter sidebar (dipakai lintas halaman)
-│   └── export_utils.py       # Helper ekspor CSV/Excel/PDF
+│   ├── config.py             # Path, skema kolom CAP, & fixed field mapping
+│   ├── db.py                 # Koneksi DuckDB, skema tabel, kelola dataset
+│   ├── ingest.py              # Logika import CSV + validasi skema CAP
+│   ├── queries.py             # Filter dinamis & query agregasi
+│   ├── ui_filters.py          # Widget filter sidebar (dipakai lintas halaman)
+│   └── export_utils.py        # Helper ekspor CSV/Excel/PDF
 ├── data/                     # Database DuckDB & folder upload (di-gitignore)
 ├── .streamlit/config.toml    # Konfigurasi Streamlit (batas upload, dll)
 ├── run.sh / run.command      # Launcher portable (pakai runtime/python bila ada)
@@ -96,10 +112,10 @@ Aplikasi terbuka di `http://localhost:8501`.
 ## Panduan Pemakaian
 
 1. **Import Data** — upload CSV atau isi path/folder lokal, lalu klik Import.
-2. **Field Mapping** (di halaman yang sama) — petakan kolom mentah CSV ke
-   field semantik (`event_time`, `user`, `endpoint`, `policy`, `action`, dst).
-   Field wajib: `event_time`, `user`, `endpoint`, `action`. Mapping ini
-   tersimpan dan berlaku untuk semua dataset yang diimpor berikutnya.
+   Tidak ada langkah pemetaan kolom — cukup pastikan CSV berasal dari ekspor
+   CAP Netwrix Endpoint Protector.
+2. **Skema CAP** (tab di halaman yang sama) — lihat daftar kolom yang
+   didukung dan field mana yang dipakai untuk filter/dashboard.
 3. **Dashboard** — pantau tren & statistik Content Aware sesuai filter.
 4. **Log Explorer** — telusuri baris event mentah dengan filter & pencarian.
 5. **SQL Query** — untuk analisis ad-hoc lewat query SQL langsung.
@@ -118,3 +134,6 @@ Dataset** dan gunakan tombol hapus per-dataset atau "Hapus SEMUA dataset".
   bawaan DuckDB bila diperlukan.
 - Jangan menjalankan lebih dari satu instance aplikasi secara bersamaan
   terhadap database yang sama — DuckDB hanya mendukung satu writer aktif.
+- Aplikasi ini dirancang khusus untuk ekspor **Content Aware Protection**;
+  jenis laporan EPP lain (mis. Device Control) memiliki skema kolom berbeda
+  dan tidak didukung oleh mapping tetap saat ini.
