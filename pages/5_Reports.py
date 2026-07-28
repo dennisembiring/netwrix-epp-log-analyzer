@@ -60,7 +60,37 @@ if top_destination_df is not None and not top_destination_df.empty:
         st.dataframe(top_destination_df, hide_index=True, width="stretch")
 
 st.divider()
-st.subheader("Ekspor Laporan")
+st.subheader("Full Report (PDF)")
+st.caption(
+    "Satu file PDF berisi seluruh ringkasan di atas (action, event type, top "
+    "policy, top users, top endpoints, top destination), sesuai filter yang "
+    "sedang aktif di sidebar."
+)
+full_report_sections = [
+    ("Content Aware: Action", action_df),
+    ("Event Type", event_type_df),
+    ("Top Policy", top_policy_df),
+    ("Top Users", top_users_df),
+    ("Top Endpoints", top_endpoints_df),
+    ("Top Destination", top_destination_df),
+]
+if any(df is not None and not df.empty for _, df in full_report_sections):
+    st.download_button(
+        "⬇️ Download Full Report (PDF)",
+        export_utils.to_full_report_pdf_bytes(
+            "Full Report - Netwrix EPP CAP",
+            [f"Total event (sesuai filter): {total:,}"],
+            full_report_sections,
+        ),
+        file_name="full_report.pdf",
+        mime="application/pdf",
+        type="primary",
+    )
+else:
+    st.info("Tidak ada data ringkasan untuk digabung jadi Full Report.")
+
+st.divider()
+st.subheader("Ekspor Per Ringkasan")
 
 report_choice = st.selectbox(
     "Pilih data untuk diekspor",
