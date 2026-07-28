@@ -1,17 +1,18 @@
 # Netwrix Endpoint Protector — Content Aware Protection (CAP) Log Analyzer
 
-Aplikasi web lokal untuk mengimpor, mengelola, dan menganalisis jutaan hingga
-puluhan juta event hasil ekspor CSV **Content Aware Protection (CAP)** dari
-Netwrix Endpoint Protector — tanpa batasan baris Microsoft Excel.
+A local web application for importing, managing, and analyzing millions to
+tens of millions of events from **Content Aware Protection (CAP)** CSV
+exports from Netwrix Endpoint Protector — without Microsoft Excel's row
+limits.
 
-Dibangun dengan **Streamlit** (UI) dan **DuckDB** (query engine kolumnar) yang
-membaca CSV langsung dari disk tanpa memuat seluruh data ke memori Python,
-sehingga tetap ringan untuk dataset berskala besar.
+Built with **Streamlit** (UI) and **DuckDB** (columnar query engine) that
+reads CSV files directly from disk without loading the full dataset into
+Python memory, keeping it lightweight even for very large datasets.
 
-Aplikasi ini **khusus untuk skema ekspor CAP** — kolom sudah dipetakan secara
-tetap di kode, jadi tidak ada langkah pemetaan kolom manual sama sekali.
+This app is **scoped specifically to the CAP export schema** — columns are
+mapped in code, so there is no manual column-mapping step at all.
 
-## Skema CSV yang didukung
+## Supported CSV schema
 
 ```
 Event, Event Time, Machine Name, Source IP-address, Client, Source,
@@ -20,71 +21,71 @@ Destination Type, Destination Details, Email Sender, Email Subject,
 Filesize(kb), File Hash, Vid, Pid, Serial Number, Os, Log, Justification
 ```
 
-Kolom di luar daftar ini tetap ikut disimpan (bisa diakses lewat SQL Query
-atau full-text search), hanya tidak dipakai untuk filter/dashboard bawaan.
+Columns outside this list are still stored (accessible via SQL Query or
+full-text search) — they're just not wired into the built-in filters/dashboard.
 
-## Fitur
+## Features
 
-- **Import fleksibel** — upload lewat browser (hingga 5 GB) atau baca langsung
-  dari path lokal/glob pattern (`/data/logs/*.csv`), tanpa batas ukuran karena
-  dibaca langsung oleh DuckDB dari disk.
-- **Tanpa mapping manual** — kolom CAP dipetakan otomatis ke field semantik
-  (user, endpoint, policy, action, waktu, destination, dll) langsung di kode.
-- **Validasi skema saat import** — kalau file CSV kekurangan kolom CAP yang
-  diharapkan, aplikasi menampilkan peringatan (bukan blocking) sehingga tetap
-  jelas filter mana yang mungkin tidak terisi.
-- **Multi-file, skema berkembang otomatis** — file CSV dengan kolom tambahan
-  di luar skema CAP standar tetap bisa digabung tanpa error.
-- **Dashboard interaktif** — tren event dari waktu ke waktu, breakdown
-  Content Aware (Blocked/Allowed/Detected), top user/endpoint/policy.
-- **Log Explorer** — filter multi-kriteria (tanggal, user, endpoint, policy,
-  action, item type, destination/destination type, ekstensi file) + pencarian
-  full-text + tabel data besar (streamlit-aggrid) dengan paginasi.
-- **SQL Query** — jalankan query SQL bebas (read-only) terhadap seluruh data.
-- **Reports & Export** — ekspor hasil analisis ke CSV, Excel, atau PDF.
-- **Kelola dataset** — hapus dataset satu per satu, atau reset total untuk
-  mulai analisis baru dari nol.
+- **Flexible import** — upload via browser (up to 5 GB) or read directly from
+  a local path/glob pattern (`/data/logs/*.csv`), with no practical size
+  limit since DuckDB reads straight from disk.
+- **No manual mapping** — CAP columns are mapped to semantic fields (user,
+  endpoint, policy, action, time, destination, etc.) directly in code.
+- **Schema validation on import** — if a CSV is missing expected CAP columns,
+  the app shows a warning (non-blocking) so it's clear which filters may end
+  up empty.
+- **Multi-file, auto-evolving schema** — CSVs with extra columns beyond the
+  standard CAP schema can still be merged without error.
+- **Interactive dashboard** — event trends over time, Content Aware breakdown
+  (Blocked/Allowed/Detected), top users/endpoints/policies.
+- **Log Explorer** — multi-criteria filters (date, user, endpoint, policy,
+  action, item type, destination/destination type, file extension) +
+  full-text search + large-data table (streamlit-aggrid) with pagination.
+- **SQL Query** — run free-form SQL (read-only) against the full dataset.
+- **Reports & Export** — export analysis results to CSV, Excel, or PDF.
+- **Dataset management** — delete datasets one at a time, or wipe everything
+  to start a fresh analysis.
 
 ## Tech Stack
 
-| Komponen | Fungsi |
+| Component | Purpose |
 |---|---|
-| Python 3.12 | Bahasa pemrograman |
-| Streamlit | Framework antarmuka web |
-| DuckDB | Query engine untuk baca/gabung CSV tanpa load penuh ke memori |
-| Pandas | Manipulasi data |
-| Plotly | Visualisasi interaktif |
-| streamlit-aggrid | Tabel data berskala besar |
-| OpenPyXL | Ekspor Excel |
-| ReportLab | Ekspor PDF |
+| Python 3.12 | Programming language |
+| Streamlit | Web UI framework |
+| DuckDB | Query engine for reading/joining CSVs without full memory load |
+| Pandas | Data manipulation |
+| Plotly | Interactive visualization |
+| streamlit-aggrid | Large-scale data tables |
+| OpenPyXL | Excel export |
+| ReportLab | PDF export |
 
-## Struktur Proyek
+## Project Structure
 
 ```
 .
-├── app.py                   # Halaman utama (overview & navigasi)
+├── app.py                   # Home page (overview & navigation)
 ├── pages/
-│   ├── 1_Import_Data.py     # Upload/path import + info skema CAP + kelola dataset
-│   ├── 2_Dashboard.py       # Tren event & statistik Content Aware
-│   ├── 3_Log_Explorer.py    # Filter, full-text search, tabel data besar
-│   ├── 4_SQL_Query.py       # Query SQL bebas (read-only)
-│   └── 5_Reports.py         # Ringkasan & ekspor CSV/Excel/PDF
+│   ├── 1_Import_Data.py     # Upload/path import + CAP schema info + dataset management
+│   ├── 2_Dashboard.py       # Event trends & Content Aware statistics
+│   ├── 3_Log_Explorer.py    # Filters, full-text search, large-data table
+│   ├── 4_SQL_Query.py       # Free-form SQL query (read-only)
+│   └── 5_Reports.py         # Summary & CSV/Excel/PDF export
 ├── src/
-│   ├── config.py             # Path, skema kolom CAP, & fixed field mapping
-│   ├── db.py                 # Koneksi DuckDB, skema tabel, kelola dataset
-│   ├── ingest.py              # Logika import CSV + validasi skema CAP
-│   ├── queries.py             # Filter dinamis & query agregasi
-│   ├── ui_filters.py          # Widget filter sidebar (dipakai lintas halaman)
-│   └── export_utils.py        # Helper ekspor CSV/Excel/PDF
-├── data/                     # Database DuckDB & folder upload (di-gitignore)
-├── .streamlit/config.toml    # Konfigurasi Streamlit (batas upload, dll)
-├── run.sh / run.command      # Launcher portable (pakai runtime/python bila ada)
+│   ├── config.py             # Paths, CAP column schema, & fixed field mapping
+│   ├── db.py                 # DuckDB connection, table schema, dataset management
+│   ├── ingest.py              # CSV import logic + CAP schema validation
+│   ├── queries.py             # Dynamic filters & aggregate queries
+│   ├── ui_filters.py          # Sidebar filter widgets (shared across pages)
+│   └── export_utils.py        # CSV/Excel/PDF export helpers
+├── data/                     # DuckDB database & upload folder (gitignored)
+├── .streamlit/config.toml    # Streamlit config (upload limit, etc.)
+├── run.sh / run.command      # Portable launcher (uses runtime/python if present)
 └── requirements.txt
 ```
 
-## Instalasi & Menjalankan
+## Installation & Running
 
-### Opsi 1 — Python biasa
+### Option 1 — Plain Python
 
 ```bash
 python3.12 -m venv .venv
@@ -93,47 +94,48 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-### Opsi 2 — Runtime portable (tanpa install Python)
+### Option 2 — Portable runtime (no Python install needed)
 
-Jika folder `runtime/python` (bundle Python + dependency) tersedia — bisa
-dibuat dengan mem-bundle build [python-build-standalone](https://github.com/astral-sh/python-build-standalone)
-lalu `pip install -r requirements.txt` ke dalamnya:
+If a `runtime/python` folder (bundled Python + dependencies) is present — it
+can be built by bundling a [python-build-standalone](https://github.com/astral-sh/python-build-standalone)
+release and running `pip install -r requirements.txt` into it:
 
 ```bash
 ./run.sh
-# atau double-click run.command di Finder (macOS)
+# or double-click run.command in Finder (macOS)
 ```
 
-Folder `runtime/` sengaja **tidak** ikut masuk ke repo Git (ukurannya
-ratusan MB) — didistribusikan lewat salinan folder langsung, bukan lewat Git.
+The `runtime/` folder is intentionally **not** committed to Git (it's
+hundreds of MB) — it's distributed by copying the folder directly, not via Git.
 
-Aplikasi terbuka di `http://localhost:8501`.
+The app opens at `http://localhost:8501`.
 
-## Panduan Pemakaian
+## Usage Guide
 
-1. **Import Data** — upload CSV atau isi path/folder lokal, lalu klik Import.
-   Tidak ada langkah pemetaan kolom — cukup pastikan CSV berasal dari ekspor
-   CAP Netwrix Endpoint Protector.
-2. **Skema CAP** (tab di halaman yang sama) — lihat daftar kolom yang
-   didukung dan field mana yang dipakai untuk filter/dashboard.
-3. **Dashboard** — pantau tren & statistik Content Aware sesuai filter.
-4. **Log Explorer** — telusuri baris event mentah dengan filter & pencarian.
-5. **SQL Query** — untuk analisis ad-hoc lewat query SQL langsung.
-6. **Reports** — unduh ringkasan hasil analisis dalam format CSV/Excel/PDF.
+1. **Import Data** — upload a CSV or enter a local path/folder, then click
+   Import. There's no mapping step — just make sure the CSV is a CAP export
+   from Netwrix Endpoint Protector.
+2. **CAP Schema** (tab on the same page) — see the list of supported columns
+   and which fields are used for filters/dashboard.
+3. **Dashboard** — monitor trends & Content Aware statistics per your filters.
+4. **Log Explorer** — browse raw event rows with filters & search.
+5. **SQL Query** — for ad-hoc analysis via direct SQL.
+6. **Reports** — download summarized analysis results as CSV/Excel/PDF.
 
-Untuk memulai analisis dari data baru, buka **Import Data → tab Kelola
-Dataset** dan gunakan tombol hapus per-dataset atau "Hapus SEMUA dataset".
+To start fresh with new data, go to **Import Data → "Manage Dataset" tab**
+and use the per-dataset delete button or "Delete ALL datasets".
 
-## Catatan
+## Notes
 
-- Batas upload lewat browser diset 5 GB (`.streamlit/config.toml`). Untuk
-  dataset puluhan juta baris, mode **path lokal** lebih efisien karena DuckDB
-  membaca langsung dari disk tanpa lewat memori Python.
-- Pencarian full-text saat ini memakai `ILIKE` lintas kolom (cukup untuk
-  kebutuhan umum); untuk dataset sangat besar bisa ditingkatkan ke FTS index
-  bawaan DuckDB bila diperlukan.
-- Jangan menjalankan lebih dari satu instance aplikasi secara bersamaan
-  terhadap database yang sama — DuckDB hanya mendukung satu writer aktif.
-- Aplikasi ini dirancang khusus untuk ekspor **Content Aware Protection**;
-  jenis laporan EPP lain (mis. Device Control) memiliki skema kolom berbeda
-  dan tidak didukung oleh mapping tetap saat ini.
+- Browser upload limit is set to 5 GB (`.streamlit/config.toml`). For
+  datasets with tens of millions of rows, **local path** import is more
+  efficient since DuckDB reads straight from disk without going through
+  Python memory.
+- Full-text search currently uses `ILIKE` across columns (fine for general
+  use); it could be upgraded to DuckDB's built-in FTS index for very large
+  datasets if needed.
+- Don't run more than one instance of the app against the same database at
+  the same time — DuckDB only supports a single active writer.
+- This app is purpose-built for **Content Aware Protection** exports; other
+  EPP report types (e.g. Device Control) have a different column schema and
+  aren't supported by the current fixed mapping.
