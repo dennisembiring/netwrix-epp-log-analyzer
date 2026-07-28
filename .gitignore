@@ -1,0 +1,10 @@
+data/*.duckdb
+data/*.duckdb.wal
+data/uploads/*
+!data/uploads/.gitkeep
+__pycache__/
+*.pyc
+.venv/
+runtime/
+.streamlit/secrets.toml
+.DS_Store
