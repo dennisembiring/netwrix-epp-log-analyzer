@@ -12,8 +12,8 @@ st.title("📥 Import Data")
 st.caption(
     "Import satu atau beberapa file CSV hasil ekspor **Content Aware Protection "
     "(CAP)** Netwrix Endpoint Protector. Kolom sudah dipetakan otomatis sesuai "
-    "skema CAP — tidak perlu pemetaan manual. Untuk dataset sangat besar "
-    "(jutaan baris), gunakan mode **Path lokal** — DuckDB membaca langsung dari "
+    "skema CAP, tidak perlu pemetaan manual. Untuk dataset sangat besar "
+    "(jutaan baris), gunakan mode **Path lokal**: DuckDB membaca langsung dari "
     "disk tanpa memuat seluruh file ke memori."
 )
 
@@ -21,7 +21,7 @@ st.caption(
 def _show_results(results: list[dict]) -> None:
     st.success(f"Berhasil mengimpor {len(results)} file.")
     for r in results:
-        st.write(f"- `{Path(r['file']).name}` — {r['rows']:,} baris, {len(r['columns'])} kolom")
+        st.write(f"- `{Path(r['file']).name}`: {r['rows']:,} baris, {len(r['columns'])} kolom")
         check = r["schema_check"]
         if check["missing"]:
             st.warning(
@@ -101,7 +101,7 @@ with tab_schema:
     st.subheader("Skema CAP yang didukung")
     st.caption(
         "Aplikasi ini khusus untuk ekspor **Content Aware Protection (CAP)** "
-        "Netwrix Endpoint Protector. Kolom berikut dipetakan otomatis — tidak "
+        "Netwrix Endpoint Protector. Kolom berikut dipetakan otomatis, tidak "
         "ada langkah pemetaan manual."
     )
     st.code("\n".join(config.CAP_RAW_COLUMNS), language="text")

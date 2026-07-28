@@ -33,7 +33,7 @@ st.subheader("Ringkasan")
 cols = st.columns(3)
 if action_df is not None and not action_df.empty:
     with cols[0]:
-        st.write("**Content Aware — Action**")
+        st.write("**Content Aware: Action**")
         st.dataframe(action_df, hide_index=True, width="stretch")
 if event_type_df is not None and not event_type_df.empty:
     with cols[1]:

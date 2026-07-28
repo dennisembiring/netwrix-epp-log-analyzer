@@ -41,7 +41,7 @@ with col_left:
         st.info("Petakan field 'event_time' untuk melihat tren.")
 
 with col_right:
-    st.subheader("Content Aware — Action")
+    st.subheader("Content Aware: Action")
     if mapping.get("action"):
         action_df = queries.action_breakdown(con, fs, mapping)
         if not action_df.empty:

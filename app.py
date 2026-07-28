@@ -9,7 +9,7 @@ con = db.get_connection()
 st.title("🛡️ " + config.APP_TITLE)
 st.caption(
     "Import, kelola, dan analisis jutaan event ekspor CSV Content Aware "
-    "Protection (CAP) Netwrix Endpoint Protector tanpa batasan Excel — "
+    "Protection (CAP) Netwrix Endpoint Protector tanpa batasan Excel, "
     "didukung DuckDB."
 )
 
@@ -33,11 +33,11 @@ else:
 st.markdown(
     """
 ### Navigasi
-- **1 Import Data** — impor file CSV CAP (upload atau path lokal)
-- **2 Dashboard** — tren event, statistik Content Aware (Blocked/Allowed/Detected)
-- **3 Log Explorer** — pencarian full-text, filter multi-kriteria, tabel data besar
-- **4 SQL Query** — jalankan query SQL bebas terhadap seluruh data
-- **5 Reports** — ekspor hasil analisis ke CSV, Excel, atau PDF
+- **1 Import Data**: impor file CSV CAP (upload atau path lokal)
+- **2 Dashboard**: tren event, statistik Content Aware (Blocked/Allowed/Detected)
+- **3 Log Explorer**: pencarian full-text, filter multi-kriteria, tabel data besar
+- **4 SQL Query**: jalankan query SQL bebas terhadap seluruh data
+- **5 Reports**: ekspor hasil analisis ke CSV, Excel, atau PDF
 
 Kolom CSV yang didukung sudah tetap mengikuti skema ekspor CAP Netwrix
 Endpoint Protector, jadi tidak perlu pemetaan kolom manual.
