@@ -90,3 +90,22 @@ with c4:
             fig = px.bar(df.sort_values("events"), x="events", y="event_type", orientation="h")
             fig.update_layout(margin=dict(l=10, r=10, t=10, b=10), yaxis_title=None)
             st.plotly_chart(fig, width="stretch")
+
+c5, c6 = st.columns(2)
+with c5:
+    st.subheader("Top Destination")
+    if mapping.get("destination"):
+        df = queries.top_values(con, fs, mapping, "destination")
+        if not df.empty:
+            fig = px.bar(df.sort_values("events"), x="events", y="value", orientation="h")
+            fig.update_layout(margin=dict(l=10, r=10, t=10, b=10), yaxis_title=None)
+            st.plotly_chart(fig, width="stretch")
+
+with c6:
+    st.subheader("Destination Type")
+    if mapping.get("destination_type"):
+        df = queries.top_values(con, fs, mapping, "destination_type")
+        if not df.empty:
+            fig = px.bar(df.sort_values("events"), x="events", y="value", orientation="h")
+            fig.update_layout(margin=dict(l=10, r=10, t=10, b=10), yaxis_title=None)
+            st.plotly_chart(fig, width="stretch")

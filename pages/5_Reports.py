@@ -28,6 +28,7 @@ event_type_df = queries.event_type_breakdown(con, fs, mapping) if mapping.get("e
 top_users_df = queries.top_values(con, fs, mapping, "user", limit=20) if mapping.get("user") else None
 top_endpoints_df = queries.top_values(con, fs, mapping, "endpoint", limit=20) if mapping.get("endpoint") else None
 top_policy_df = queries.top_values(con, fs, mapping, "policy", limit=20) if mapping.get("policy") else None
+top_destination_df = queries.top_values(con, fs, mapping, "destination", limit=20) if mapping.get("destination") else None
 
 st.subheader("Ringkasan")
 cols = st.columns(3)
@@ -44,7 +45,7 @@ if top_policy_df is not None and not top_policy_df.empty:
         st.write("**Top Policy**")
         st.dataframe(top_policy_df, hide_index=True, width="stretch")
 
-cols2 = st.columns(2)
+cols2 = st.columns(3)
 if top_users_df is not None and not top_users_df.empty:
     with cols2[0]:
         st.write("**Top Users**")
@@ -53,13 +54,17 @@ if top_endpoints_df is not None and not top_endpoints_df.empty:
     with cols2[1]:
         st.write("**Top Endpoints**")
         st.dataframe(top_endpoints_df, hide_index=True, width="stretch")
+if top_destination_df is not None and not top_destination_df.empty:
+    with cols2[2]:
+        st.write("**Top Destination**")
+        st.dataframe(top_destination_df, hide_index=True, width="stretch")
 
 st.divider()
 st.subheader("Ekspor Laporan")
 
 report_choice = st.selectbox(
     "Pilih data untuk diekspor",
-    ["Ringkasan Action", "Ringkasan Event Type", "Top Users", "Top Endpoints", "Top Policy"],
+    ["Ringkasan Action", "Ringkasan Event Type", "Top Users", "Top Endpoints", "Top Policy", "Top Destination"],
 )
 export_map = {
     "Ringkasan Action": action_df,
@@ -67,6 +72,7 @@ export_map = {
     "Top Users": top_users_df,
     "Top Endpoints": top_endpoints_df,
     "Top Policy": top_policy_df,
+    "Top Destination": top_destination_df,
 }
 export_df = export_map.get(report_choice)
 
