@@ -134,6 +134,10 @@ and use the per-dataset delete button or "Delete ALL datasets".
 - Full-text search currently uses `ILIKE` across columns (fine for general
   use); it could be upgraded to DuckDB's built-in FTS index for very large
   datasets if needed.
+- CSV import tolerates quoted fields containing commas (`QUOTE`/`ESCAPE`
+  parsing) and recognizes several common `Event Time` formats (e.g.
+  `MM/DD/YYYY hh:mm AM/PM`, `MM/DD/YYYY HH:mm`, `DD/MM/YYYY HH:mm`,
+  `DD.MM.YYYY HH:mm`) in addition to ISO and slash-separated dates.
 - Don't run more than one instance of the app against the same database at
   the same time. DuckDB only supports a single active writer.
 - This app is purpose-built for **Content Aware Protection** exports; other

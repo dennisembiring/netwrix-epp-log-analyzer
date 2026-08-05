@@ -31,6 +31,7 @@ def read_headers(con, path: str) -> list[str]:
     escaped = _quote_lit(path)
     rel = con.sql(
         f"SELECT * FROM read_csv_auto('{escaped}', ALL_VARCHAR=TRUE, "
+        f"DELIM=',', QUOTE='\"', ESCAPE='\"', STRICT_MODE=FALSE, "
         f"SAMPLE_SIZE=1000, IGNORE_ERRORS=TRUE) LIMIT 0"
     )
     return list(rel.columns)
@@ -77,6 +78,7 @@ def _import_single(con, path: str, label_prefix: str | None) -> dict:
     )
     read_csv_expr = (
         f"read_csv_auto('{escaped}', ALL_VARCHAR=TRUE, UNION_BY_NAME=TRUE, "
+        f"DELIM=',', QUOTE='\"', ESCAPE='\"', STRICT_MODE=FALSE, "
         f"IGNORE_ERRORS=TRUE)"
     )
 
