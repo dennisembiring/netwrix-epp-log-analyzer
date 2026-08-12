@@ -6,6 +6,8 @@ keeps ingestion fast/robust while still allowing date-range filters, trend
 charts, etc.
 """
 
+import datetime
+
 from . import db
 
 DATE_FORMATS = [
@@ -86,7 +88,14 @@ class FilterSet:
             self.clauses.append(f"{event_time_expr(self.mapping)} >= ?")
             self.params.append(start)
         if end:
-            self.clauses.append(f"{event_time_expr(self.mapping)} <= ?")
+            # A bare date (e.g. from st.date_input) compares as midnight, which
+            # would exclude the entire end day. Bump to the start of the next
+            # day and use a strict "<" so the whole end day is included.
+            if isinstance(end, datetime.date) and not isinstance(end, datetime.datetime):
+                end = end + datetime.timedelta(days=1)
+                self.clauses.append(f"{event_time_expr(self.mapping)} < ?")
+            else:
+                self.clauses.append(f"{event_time_expr(self.mapping)} <= ?")
             self.params.append(end)
         return self
 
