@@ -50,6 +50,32 @@ def check_cap_schema(raw_columns: list[str]) -> dict:
     }
 
 
+_AUTO_COLUMN_NAME = re.compile(r"^column\d+$")
+
+
+def looks_headerless(raw_columns: list[str]) -> bool:
+    """True if DuckDB couldn't find a header row and fell back to
+    auto-generated names (column0, column1, ...) -- i.e. the file's first
+    line is already data, not column names. Importing such a file silently
+    produces an ``events`` table where every semantic field (event_time,
+    action, etc.) is unmapped and NULL, so this must be caught before import,
+    not discovered later via a broken report."""
+    return bool(raw_columns) and all(_AUTO_COLUMN_NAME.fullmatch(c) for c in raw_columns)
+
+
+def preflight_check(con, path: str) -> dict:
+    """Inspect a file's header before importing it, so problems (no header,
+    missing CAP columns) surface as an upfront warning instead of a silently
+    broken import."""
+    raw_columns = read_headers(con, path)
+    return {
+        "file": path,
+        "raw_columns": raw_columns,
+        "headerless": looks_headerless(raw_columns),
+        "schema_check": check_cap_schema(raw_columns),
+    }
+
+
 def import_files(con, paths: list[str], label_prefix: str | None = None) -> list[dict]:
     results = []
     for path in paths:

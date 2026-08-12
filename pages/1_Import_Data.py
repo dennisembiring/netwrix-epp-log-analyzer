@@ -19,7 +19,8 @@ st.caption(
 
 
 def _show_results(results: list[dict]) -> None:
-    st.success(f"Berhasil mengimpor {len(results)} file.")
+    if results:
+        st.success(f"Berhasil mengimpor {len(results)} file.")
     for r in results:
         st.write(f"- `{Path(r['file']).name}`: {r['rows']:,} baris, {len(r['columns'])} kolom")
         check = r["schema_check"]
@@ -36,6 +37,30 @@ def _show_results(results: list[dict]) -> None:
             )
 
 
+def _preflight(paths: list[str]) -> tuple[list[dict], list[dict]]:
+    """Check each candidate file's header before importing. Returns
+    (ok, headerless) so callers can import the good ones and block/warn on
+    the rest instead of silently importing a file with no real columns."""
+    ok, headerless = [], []
+    for path in paths:
+        check = ingest.preflight_check(con, path)
+        (headerless if check["headerless"] else ok).append(check)
+    return ok, headerless
+
+
+def _warn_headerless(headerless: list[dict]) -> None:
+    names = ", ".join(f"`{Path(c['file']).name}`" for c in headerless)
+    st.error(
+        f"⚠️ File tanpa header terdeteksi: {names}. Baris pertama file ini "
+        "berisi data, bukan nama kolom (mis. `Event`, `Event Time`, ...), "
+        "sehingga jika diimpor, DuckDB akan memakai nama kolom otomatis "
+        "(`column0`, `column1`, ...) dan SEMUA field semantik (waktu event, "
+        "user, action, dll) akan kosong/NULL di seluruh dashboard & report "
+        "tanpa pesan error lain. Tambahkan baris header yang sesuai skema "
+        "CAP (lihat tab **Skema CAP**) sebelum mengimpor file ini."
+    )
+
+
 tab_upload, tab_path, tab_schema, tab_manage = st.tabs(
     ["Upload File", "Path Lokal / Folder", "Skema CAP", "Kelola Dataset"]
 )
@@ -47,17 +72,42 @@ with tab_upload:
         "Pilih file CSV", type=["csv"], accept_multiple_files=True
     )
     if uploaded and st.button("Import file yang diupload", type="primary"):
-        progress = st.progress(0.0, text="Menyimpan & mengimpor file...")
-        results = []
+        progress = st.progress(0.0, text="Menyimpan & memeriksa file...")
+        saved_paths = []
         for i, uf in enumerate(uploaded):
             dest = config.UPLOAD_DIR / uf.name
             with open(dest, "wb") as f:
                 f.write(uf.getbuffer())
-            results.extend(ingest.import_files(con, [str(dest)]))
-            progress.progress((i + 1) / len(uploaded), text=f"Mengimpor {uf.name}...")
+            saved_paths.append(str(dest))
+            progress.progress((i + 1) / len(uploaded), text=f"Menyimpan {uf.name}...")
+
+        ok, headerless = _preflight(saved_paths)
+
+        results = []
+        for i, check in enumerate(ok):
+            results.extend(ingest.import_files(con, [check["file"]]))
+            progress.progress((i + 1) / len(ok) if ok else 1.0, text=f"Mengimpor {Path(check['file']).name}...")
         progress.empty()
-        _show_results(results)
-        st.rerun()
+
+        if results:
+            _show_results(results)
+        if headerless:
+            _warn_headerless(headerless)
+            st.session_state["_headerless_upload_pending"] = [c["file"] for c in headerless]
+        if results and not headerless:
+            st.rerun()
+
+    if st.session_state.get("_headerless_upload_pending"):
+        st.divider()
+        force_headerless_upload = st.checkbox(
+            "Tetap import file tanpa header ini (TIDAK disarankan -- semua field akan kosong)",
+            key="force_headerless_upload",
+        )
+        if force_headerless_upload and st.button("Import ulang dengan paksa", type="secondary"):
+            pending = st.session_state.pop("_headerless_upload_pending")
+            results = ingest.import_files(con, pending)
+            _show_results(results)
+            st.rerun()
 
 with tab_path:
     st.subheader("Import dari path lokal")
@@ -83,17 +133,33 @@ with tab_path:
     candidates = st.session_state.get("_import_candidates", [])
     if candidates:
         st.write(f"Ditemukan {len(candidates)} file:")
-        st.code("\n".join(candidates), language="text")
-        if st.button("Import file ini", type="primary"):
+        ok, headerless = _preflight(candidates)
+        ok_paths = [c["file"] for c in ok]
+        st.code("\n".join(ok_paths) if ok_paths else "(tidak ada file valid)", language="text")
+        if headerless:
+            _warn_headerless(headerless)
+
+        if ok_paths and st.button("Import file ini", type="primary"):
             progress = st.progress(0.0, text="Mengimpor...")
             results = []
-            for i, path in enumerate(candidates):
+            for i, path in enumerate(ok_paths):
                 results.extend(ingest.import_files(con, [path]))
-                progress.progress((i + 1) / len(candidates), text=f"Mengimpor {Path(path).name}...")
+                progress.progress((i + 1) / len(ok_paths), text=f"Mengimpor {Path(path).name}...")
             progress.empty()
             _show_results(results)
             st.session_state.pop("_import_candidates", None)
             st.rerun()
+
+        if headerless:
+            force_headerless_path = st.checkbox(
+                "Tetap import file tanpa header di atas (TIDAK disarankan -- semua field akan kosong)",
+                key="force_headerless_path",
+            )
+            if force_headerless_path and st.button("Import file tanpa header dengan paksa", type="secondary"):
+                results = ingest.import_files(con, [c["file"] for c in headerless])
+                _show_results(results)
+                st.session_state.pop("_import_candidates", None)
+                st.rerun()
     elif path_input:
         st.warning("Tidak ada file CSV ditemukan pada path tersebut.")
 
