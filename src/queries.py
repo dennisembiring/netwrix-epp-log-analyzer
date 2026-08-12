@@ -181,6 +181,21 @@ def fetch_page(con, fs: FilterSet, mapping: dict, order_desc: bool = True, limit
     return con.execute(q, fs.params).fetchdf()
 
 
+def fetch_all(con, fs: FilterSet, mapping: dict, order_desc: bool = True):
+    """Every row matching the filter, no pagination -- for bulk export.
+    Caller is responsible for warning on very large result sets."""
+    if not db.table_exists(con, "events"):
+        return con.sql("SELECT 1 WHERE FALSE").fetchdf()
+    time_expr = event_time_expr(mapping)
+    order = f"ORDER BY {time_expr} {'DESC' if order_desc else 'ASC'}" if mapping.get("event_time") else ""
+    q = f"""
+        SELECT * FROM events
+        WHERE {fs.sql()}
+        {order}
+    """
+    return con.execute(q, fs.params).fetchdf()
+
+
 def events_over_time(con, fs: FilterSet, mapping: dict, granularity: str = "day"):
     time_expr = event_time_expr(mapping)
     q = f"""

@@ -59,7 +59,54 @@ c3.download_button(
     file_name="log_explorer_export.pdf",
     mime="application/pdf",
 )
+st.caption("Export hanya mencakup halaman yang sedang ditampilkan.")
+
+st.divider()
+st.subheader("Export semua hasil filter")
 st.caption(
-    "Export hanya mencakup halaman yang sedang ditampilkan. Untuk export seluruh "
-    "hasil filter (bisa jutaan baris), gunakan halaman **SQL Query** atau **Reports**."
+    f"Export seluruh {total:,} baris yang cocok dengan filter saat ini di sidebar "
+    "(bukan cuma halaman yang sedang ditampilkan)."
 )
+
+_EXCEL_ROW_LIMIT = 1_048_576 - 1  # minus header row
+if total > _EXCEL_ROW_LIMIT:
+    st.warning(
+        f"{total:,} baris melebihi batas maksimum Excel ({_EXCEL_ROW_LIMIT:,} baris "
+        "per sheet). Export Excel akan dinonaktifkan -- gunakan CSV untuk data selengkap ini."
+    )
+
+filter_signature = (fs.sql(), tuple(fs.params))
+if st.button("Siapkan export semua data", key="prepare_full_export"):
+    with st.spinner(f"Mengambil {total:,} baris dari database..."):
+        st.session_state["_log_explorer_full_df"] = queries.fetch_all(con, fs, mapping)
+        st.session_state["_log_explorer_full_sig"] = filter_signature
+
+cached_sig = st.session_state.get("_log_explorer_full_sig")
+full_df = st.session_state.get("_log_explorer_full_df") if cached_sig == filter_signature else None
+
+if full_df is not None:
+    st.success(f"Export siap: {len(full_df):,} baris.")
+    ec1, ec2, ec3 = st.columns(3)
+    ec1.download_button(
+        "⬇️ CSV (semua)",
+        export_utils.to_csv_bytes(full_df),
+        file_name="log_explorer_full_export.csv",
+        mime="text/csv",
+    )
+    ec2.download_button(
+        "⬇️ Excel (semua)",
+        export_utils.to_excel_bytes(full_df) if len(full_df) <= _EXCEL_ROW_LIMIT else b"",
+        file_name="log_explorer_full_export.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        disabled=len(full_df) > _EXCEL_ROW_LIMIT,
+    )
+    ec3.download_button(
+        "⬇️ PDF (semua, dibatasi baris & kolom)",
+        export_utils.to_pdf_bytes(
+            "Log Explorer Export (Semua)", [f"Total baris: {len(full_df):,}"], full_df
+        ),
+        file_name="log_explorer_full_export.pdf",
+        mime="application/pdf",
+    )
+elif cached_sig is not None and cached_sig != filter_signature:
+    st.info("Filter berubah sejak export terakhir disiapkan. Klik tombol di atas untuk menyiapkan ulang.")
