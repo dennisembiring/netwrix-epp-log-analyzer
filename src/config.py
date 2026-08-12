@@ -53,4 +53,6 @@ FIELD_MAPPING = {
     "file_size": "filesize_kb",
     "destination_type": "destination_type",
     "destination": "destination",
+    "matched_item": "matched_item",
+    "destination_details": "destination_details",
 }

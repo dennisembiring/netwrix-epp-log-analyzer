@@ -1,6 +1,6 @@
 import streamlit as st
 
-from src import config, db
+from src import config, db, queries
 
 st.set_page_config(page_title=config.APP_TITLE, page_icon="🛡️", layout="wide")
 
@@ -15,10 +15,12 @@ st.caption(
 
 total_events = db.total_event_count(con)
 datasets_df = db.list_datasets(con)
+latest_event = queries.latest_event_time(con, config.FIELD_MAPPING) if total_events else None
 
-c1, c2 = st.columns(2)
+c1, c2, c3 = st.columns(3)
 c1.metric("Total event", f"{total_events:,}")
 c2.metric("Dataset diimpor", len(datasets_df))
+c3.metric("Data terbaru", str(latest_event) if latest_event is not None else "-")
 
 st.divider()
 

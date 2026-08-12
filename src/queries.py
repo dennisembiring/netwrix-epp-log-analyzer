@@ -40,12 +40,32 @@ def event_time_expr(mapping: dict) -> str:
     return f"COALESCE(TRY_CAST({col(raw)} AS TIMESTAMP), {casts})"
 
 
+# Restricted to real file extensions so this doesn't pick up domain suffixes
+# (docs.google.com -> "com") when file_path/file_name is actually a URL, which
+# is common for CAP's Source/Matched Item fields on browser-based events.
+_FILE_EXTENSIONS = (
+    "pdf|docx?|xlsx?|pptx?|csv|txt|rtf|odt|ods|odp|"
+    "zip|rar|7z|tar|gz|iso|dmg|"
+    "png|jpe?g|gif|bmp|svg|tiff?|webp|heic|"
+    "mp3|mp4|wav|avi|mov|mkv|"
+    "exe|msi|dll|apk|bat|sh|"
+    "json|xml|ya?ml|sql|log|bak|"
+    "eml|msg|pst|"
+    "py|js|ts|java|cs|cpp|php"
+)
+
+
 def file_ext_expr(mapping: dict) -> str:
     if mapping.get("file_extension"):
         return col(mapping["file_extension"])
     fname = mapping.get("file_name") or mapping.get("file_path")
     if fname:
-        return f"regexp_extract({col(fname)}, '\\.([A-Za-z0-9]+)$', 1)"
+        # regexp_extract returns '' (not NULL) on no-match, which would slip
+        # past every "IS NOT NULL" filter downstream -- NULLIF closes that gap.
+        return (
+            f"NULLIF(regexp_extract({col(fname)}, "
+            f"'\\.({_FILE_EXTENSIONS})$', 1, 'i'), '')"
+        )
     return "NULL"
 
 
@@ -173,6 +193,31 @@ def events_over_time(con, fs: FilterSet, mapping: dict, granularity: str = "day"
     return con.execute(q, fs.params).fetchdf()
 
 
+def file_extension_breakdown(con, fs: FilterSet, mapping: dict, limit: int = 15):
+    expr = file_ext_expr(mapping)
+    if expr == "NULL":
+        return con.sql("SELECT 1 WHERE FALSE").fetchdf()
+    q = f"""
+        SELECT {expr} AS file_extension, count(*) AS events
+        FROM events
+        WHERE {fs.sql()} AND {expr} IS NOT NULL
+        GROUP BY 1
+        ORDER BY 2 DESC
+        LIMIT {limit}
+    """
+    return con.execute(q, fs.params).fetchdf()
+
+
+def latest_event_time(con, mapping: dict):
+    """Newest Event Time across ALL imported data (ignores active filters) so
+    it reads as "how fresh is the data", not "what's in the current view"."""
+    if not mapping.get("event_time") or not db.table_exists(con, "events"):
+        return None
+    time_expr = event_time_expr(mapping)
+    row = con.execute(f"SELECT max({time_expr}) FROM events").fetchone()
+    return row[0] if row else None
+
+
 def top_values(con, fs: FilterSet, mapping: dict, field: str, limit: int = 15):
     raw = mapping.get(field)
     if not raw:
@@ -184,6 +229,23 @@ def top_values(con, fs: FilterSet, mapping: dict, field: str, limit: int = 15):
         GROUP BY 1
         ORDER BY 2 DESC
         LIMIT {limit}
+    """
+    return con.execute(q, fs.params).fetchdf()
+
+
+def top_matched_item_destination(con, fs: FilterSet, mapping: dict, limit: int | None = None):
+    raw_item = mapping.get("matched_item")
+    raw_dest = mapping.get("destination_details")
+    if not raw_item or not raw_dest:
+        return con.sql("SELECT 1 WHERE FALSE").fetchdf()
+    limit_clause = f"LIMIT {limit}" if limit else ""
+    q = f"""
+        SELECT "{raw_item}" AS matched_item, "{raw_dest}" AS destination_details, count(*) AS events
+        FROM events
+        WHERE {fs.sql()} AND "{raw_item}" IS NOT NULL AND "{raw_dest}" IS NOT NULL
+        GROUP BY 1, 2
+        ORDER BY 3 DESC
+        {limit_clause}
     """
     return con.execute(q, fs.params).fetchdf()
 

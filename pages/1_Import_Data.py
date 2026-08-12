@@ -3,7 +3,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from src import config, db, ingest
+from src import config, db, ingest, queries
 
 st.set_page_config(page_title="Import Data", page_icon="📥", layout="wide")
 con = db.get_connection()
@@ -201,6 +201,9 @@ with tab_manage:
     if datasets_df.empty:
         st.info("Belum ada dataset.")
     else:
+        latest = queries.latest_event_time(con, config.FIELD_MAPPING)
+        if latest is not None:
+            st.metric("Data terbaru (Event Time terakhir)", str(latest))
         st.dataframe(datasets_df, width="stretch", hide_index=True)
         del_id = st.selectbox(
             "Hapus dataset (berdasarkan dataset_id)",
