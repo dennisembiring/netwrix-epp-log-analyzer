@@ -12,11 +12,11 @@ def render_sidebar_filters(con, mapping: dict) -> queries.FilterSet:
 
     if mapping.get("event_time"):
         c1, c2 = st.sidebar.columns(2)
-        start = c1.date_input("Dari tanggal", value=None, key="filter_start")
-        end = c2.date_input("Sampai tanggal", value=None, key="filter_end")
+        start = c1.date_input("From date", value=None, key="filter_start")
+        end = c2.date_input("To date", value=None, key="filter_end")
         fs.date_range(start if start else None, end if end else None)
     else:
-        st.sidebar.caption("Petakan field 'event_time' untuk mengaktifkan filter tanggal.")
+        st.sidebar.caption("Map the 'event_time' field to enable date filtering.")
 
     def multiselect_for(field: str, label: str):
         raw = mapping.get(field)

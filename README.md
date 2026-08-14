@@ -42,7 +42,11 @@ full-text search); they're just not wired into the built-in filters/dashboard.
   action, item type, destination/destination type, file extension) plus
   full-text search and a large-data table (streamlit-aggrid) with pagination.
 - **SQL Query**: run free-form SQL (read-only) against the full dataset.
-- **Reports & Export**: export analysis results to CSV, Excel, or PDF.
+- **Reports & Export**: summary breakdowns (Event Trend, Repeat Offenders,
+  Content Aware: Action, Event Type, Top Policy/Users/Endpoints/Destination,
+  File Type Distribution, Top Matched Item x Destination Details, Destination
+  Match, Policy x Destination x Event Type) with CSV/Excel/PDF export, plus a
+  combined Full Report (PDF/Excel).
 - **Dataset management**: delete datasets one at a time, or wipe everything
   to start a fresh analysis.
 
@@ -143,3 +147,43 @@ and use the per-dataset delete button or "Delete ALL datasets".
 - This app is purpose-built for **Content Aware Protection** exports; other
   EPP report types (e.g. Device Control) have a different column schema and
   aren't supported by the current fixed mapping.
+- Report breakdowns (e.g. Destination Type, Destination Match) only show
+  categories actually present in the imported CSV for the active filter --
+  see the Changelog note below for why a lower count in one period vs.
+  another is expected, not a bug.
+
+## Changelog
+
+- **Reports: Destination Match table** -- new breakdown of Destination Type
+  x Destination Details with event counts (`src/queries.py`:
+  `top_destination_type_details`), added to the Summary section, Full
+  Report (PDF/Excel), and per-summary export.
+- **Reports: Policy x Destination x Event Type table** -- new correlated
+  breakdown showing how each policy splits across destination, destination
+  type, and event/content type, capped at the top 100 combinations by event
+  count (`src/queries.py`: `policy_destination_breakdown`), wired into the
+  same three places as above.
+- **Reports: consistent table naming** -- all Reports table labels were
+  mixed Indonesian/English (e.g. "Ringkasan Action" in the export dropdown
+  vs. "Content Aware: Action" in the on-page summary); labels are now
+  unified and consistent across the Summary section, Full Report bundle,
+  and export dropdown.
+
+  > **Note on breakdown tables (Destination Match, Policy x Destination x
+  > Event Type, Top Destination, Destination Type, etc.):** these only
+  > reflect what's present in the imported CAP CSV export(s) for the
+  > currently active filter. If a given month's report shows fewer distinct
+  > Destination Types (e.g. only 10-11) than another month, that is not a
+  > data or query error -- the CAP export itself only includes the
+  > destination types that actually had matching events in that reporting
+  > period. This app reports the data exactly as exported, it does not
+  > invent or backfill categories that weren't in the source file. For the
+  > full, authoritative list of all destination types configured on your
+  > Endpoint Protector deployment (including ones with zero events in a
+  > given period), check the Content Aware report filter directly on the
+  > EPP server.
+- **Full UI translation to English** -- every user-facing string across
+  `app.py`, all pages, and `src/ui_filters.py`/`src/export_utils.py`
+  (titles, captions, buttons, info/warning/success/error messages, PDF
+  export notes) was translated from Bahasa Indonesia to English for a
+  consistent single-language UI.

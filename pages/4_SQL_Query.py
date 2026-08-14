@@ -9,21 +9,21 @@ con = db.get_connection()
 
 st.title("🧮 SQL Query")
 st.caption(
-    "Jalankan query SQL bebas terhadap tabel `events` dan `datasets` (dialek DuckDB). "
-    "Hanya statement `SELECT` / `WITH` / `PRAGMA` yang diizinkan untuk mencegah "
-    "perubahan data yang tidak disengaja."
+    "Run free-form SQL queries against the `events` and `datasets` tables "
+    "(DuckDB dialect). Only `SELECT` / `WITH` / `PRAGMA` statements are "
+    "allowed to prevent accidental data changes."
 )
 
 if not db.table_exists(con, "events"):
-    st.info("Belum ada data. Import data terlebih dahulu di halaman Import Data.")
+    st.info("No data yet. Import data first on the Import Data page.")
     st.stop()
 
-with st.expander("Skema kolom tabel `events`"):
+with st.expander("`events` table column schema"):
     cols = db.events_columns(con)
     st.code(", ".join(cols), language="text")
 
 default_query = "SELECT * FROM events LIMIT 100"
-query = st.text_area("Query SQL", value=default_query, height=180)
+query = st.text_area("SQL Query", value=default_query, height=180)
 
 WRITE_KEYWORDS = re.compile(
     r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|ATTACH|COPY|EXPORT|IMPORT|CALL|SET)\b",
@@ -42,19 +42,19 @@ def is_safe(q: str) -> bool:
     return True
 
 
-run = st.button("Jalankan Query", type="primary")
+run = st.button("Run Query", type="primary")
 
 if run:
     if not is_safe(query):
         st.error(
-            "Query ditolak. Hanya satu statement SELECT/WITH/PRAGMA/EXPLAIN/DESCRIBE/SHOW "
-            "yang diizinkan (tanpa INSERT/UPDATE/DELETE/DROP/ALTER/CREATE, dsb)."
+            "Query rejected. Only a single SELECT/WITH/PRAGMA/EXPLAIN/DESCRIBE/SHOW "
+            "statement is allowed (no INSERT/UPDATE/DELETE/DROP/ALTER/CREATE, etc)."
         )
     else:
         try:
-            with st.spinner("Menjalankan query..."):
+            with st.spinner("Running query..."):
                 result_df = con.execute(query).fetchdf()
-            st.success(f"{len(result_df):,} baris dikembalikan.")
+            st.success(f"{len(result_df):,} rows returned.")
             st.dataframe(result_df, width="stretch", hide_index=True)
             st.session_state["_last_sql_result"] = result_df
         except Exception as e:
@@ -63,7 +63,7 @@ if run:
 if "_last_sql_result" in st.session_state:
     df = st.session_state["_last_sql_result"]
     st.divider()
-    st.subheader("Export hasil query")
+    st.subheader("Export Query Result")
     c1, c2, c3 = st.columns(3)
     c1.download_button(
         "⬇️ CSV", export_utils.to_csv_bytes(df), file_name="sql_query_result.csv", mime="text/csv"
@@ -76,7 +76,7 @@ if "_last_sql_result" in st.session_state:
     )
     c3.download_button(
         "⬇️ PDF",
-        export_utils.to_pdf_bytes("SQL Query Result", [f"Total baris: {len(df)}"], df),
+        export_utils.to_pdf_bytes("SQL Query Result", [f"Total rows: {len(df)}"], df),
         file_name="sql_query_result.pdf",
         mime="application/pdf",
     )

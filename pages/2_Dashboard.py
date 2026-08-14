@@ -10,16 +10,16 @@ mapping = config.FIELD_MAPPING
 st.title("📊 Dashboard")
 
 if not db.table_exists(con, "events"):
-    st.info("Belum ada data. Import data terlebih dahulu di halaman Import Data.")
+    st.info("No data yet. Import data first on the Import Data page.")
     st.stop()
 
 fs = ui_filters.render_sidebar_filters(con, mapping)
 
 total = queries.count_events(con, fs)
-st.metric("Total event (sesuai filter)", f"{total:,}")
+st.metric("Total Events (filtered)", f"{total:,}")
 
 if total == 0:
-    st.info("Tidak ada event yang cocok dengan filter saat ini.")
+    st.info("No events match the current filter.")
     st.stop()
 
 st.divider()
@@ -27,8 +27,8 @@ st.divider()
 col_left, col_right = st.columns([2, 1])
 
 with col_left:
-    st.subheader("Tren Event")
-    granularity = st.selectbox("Granularitas", ["hour", "day", "week", "month"], index=1)
+    st.subheader("Event Trend")
+    granularity = st.selectbox("Granularity", ["hour", "day", "week", "month"], index=1)
     if mapping.get("event_time"):
         trend_df = queries.events_over_time(con, fs, mapping, granularity)
         if not trend_df.empty:
@@ -36,9 +36,9 @@ with col_left:
             fig.update_layout(margin=dict(l=10, r=10, t=10, b=10))
             st.plotly_chart(fig, width="stretch")
         else:
-            st.info("Tidak ada data waktu untuk ditampilkan.")
+            st.info("No time data to display.")
     else:
-        st.info("Petakan field 'event_time' untuk melihat tren.")
+        st.info("Map the 'event_time' field to see the trend.")
 
 with col_right:
     st.subheader("Content Aware: Action")
@@ -49,7 +49,7 @@ with col_right:
             fig.update_layout(margin=dict(l=10, r=10, t=10, b=10))
             st.plotly_chart(fig, width="stretch")
     else:
-        st.info("Petakan field 'action' untuk melihat breakdown ini.")
+        st.info("Map the 'action' field to see this breakdown.")
 
 st.divider()
 

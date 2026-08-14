@@ -9,17 +9,17 @@ mapping = config.FIELD_MAPPING
 
 st.title("📄 Reports")
 st.caption(
-    "Hasilkan ringkasan laporan berdasarkan filter yang dipilih dan ekspor ke "
-    "CSV, Excel, atau PDF."
+    "Generate report summaries based on the selected filters and export to "
+    "CSV, Excel, or PDF."
 )
 
 if not db.table_exists(con, "events"):
-    st.info("Belum ada data. Import data terlebih dahulu di halaman Import Data.")
+    st.info("No data yet. Import data first on the Import Data page.")
     st.stop()
 
 fs = ui_filters.render_sidebar_filters(con, mapping)
 total = queries.count_events(con, fs)
-st.metric("Total event sesuai filter", f"{total:,}")
+st.metric("Total Events (filtered)", f"{total:,}")
 
 if total == 0:
     st.stop()
@@ -35,6 +35,19 @@ top_matched_dest_df = (
     if mapping.get("matched_item") and mapping.get("destination_details")
     else None
 )
+destination_match_df = (
+    queries.top_destination_type_details(con, fs, mapping)
+    if mapping.get("destination_type") and mapping.get("destination_details")
+    else None
+)
+policy_destination_df = (
+    queries.policy_destination_breakdown(con, fs, mapping)
+    if mapping.get("policy")
+    and mapping.get("destination")
+    and mapping.get("destination_type")
+    and mapping.get("event_type")
+    else None
+)
 file_type_df = (
     queries.file_extension_breakdown(con, fs, mapping, limit=20)
     if mapping.get("file_path") or mapping.get("file_name") or mapping.get("file_extension")
@@ -42,11 +55,11 @@ file_type_df = (
 )
 
 st.divider()
-st.subheader("Tren Event")
+st.subheader("Event Trend")
 trend_df = None
 if mapping.get("event_time"):
     granularity = st.selectbox(
-        "Granularitas", ["day", "week", "month"], index=0, key="report_trend_granularity"
+        "Granularity", ["day", "week", "month"], index=0, key="report_trend_granularity"
     )
     trend_df = queries.events_over_time(con, fs, mapping, granularity)
     if not trend_df.empty:
@@ -54,33 +67,32 @@ if mapping.get("event_time"):
         fig.update_layout(margin=dict(l=10, r=10, t=10, b=10))
         st.plotly_chart(fig, width="stretch")
     else:
-        st.info("Tidak ada data waktu untuk ditampilkan.")
+        st.info("No time data to display.")
 else:
-    st.info("Petakan field 'event_time' untuk melihat tren.")
+    st.info("Map the 'event_time' field to see the trend.")
 
 st.divider()
 st.subheader("Repeat Offenders")
 st.caption(
-    "User dengan jumlah event di atas ambang batas yang ditentukan -- lebih "
-    "actionable daripada daftar Top Users biasa untuk menandai user yang "
-    "perlu ditindaklanjuti."
+    "Users with an event count above a chosen threshold -- more actionable "
+    "than a plain Top Users list for flagging users who need follow-up."
 )
 repeat_offenders_df = None
 if mapping.get("user"):
     threshold = st.number_input(
-        "Ambang batas jumlah event", min_value=1, value=100, step=10, key="repeat_offender_threshold"
+        "Event count threshold", min_value=1, value=100, step=10, key="repeat_offender_threshold"
     )
     all_users_df = queries.top_values(con, fs, mapping, "user", limit=100000)
     repeat_offenders_df = all_users_df[all_users_df["events"] >= threshold].reset_index(drop=True)
     if repeat_offenders_df.empty:
-        st.info(f"Tidak ada user dengan >= {threshold:,} event pada filter saat ini.")
+        st.info(f"No users with >= {threshold:,} events under the current filter.")
     else:
-        st.write(f"**{len(repeat_offenders_df)} user** dengan >= {threshold:,} event:")
+        st.write(f"**{len(repeat_offenders_df)} users** with >= {threshold:,} events:")
         st.dataframe(repeat_offenders_df, hide_index=True, width="stretch")
 else:
-    st.info("Petakan field 'user' untuk melihat repeat offenders.")
+    st.info("Map the 'user' field to see repeat offenders.")
 
-st.subheader("Ringkasan")
+st.subheader("Summary")
 cols = st.columns(3)
 if action_df is not None and not action_df.empty:
     with cols[0]:
@@ -110,25 +122,36 @@ if top_destination_df is not None and not top_destination_df.empty:
         st.dataframe(top_destination_df, hide_index=True, width="stretch")
 
 if file_type_df is not None and not file_type_df.empty:
-    st.write("**Distribusi Tipe File**")
+    st.write("**File Type Distribution**")
     st.dataframe(file_type_df, hide_index=True, width="stretch")
 
 if top_matched_dest_df is not None and not top_matched_dest_df.empty:
     st.write("**Top Matched Item x Destination Details**")
     st.dataframe(top_matched_dest_df, hide_index=True, width="stretch")
 
+if destination_match_df is not None and not destination_match_df.empty:
+    st.write("**Destination Match**")
+    st.caption("Destination Type x Destination Details")
+    st.dataframe(destination_match_df, hide_index=True, width="stretch")
+
+if policy_destination_df is not None and not policy_destination_df.empty:
+    st.write("**Policy x Destination x Event Type**")
+    st.caption("Policy x Destination Type x Destination x Event Type")
+    st.dataframe(policy_destination_df, hide_index=True, width="stretch")
+
 st.divider()
 st.subheader("Full Report")
 st.caption(
-    "Seluruh ringkasan di atas (tren event, repeat offenders, action, event "
-    "type, top policy, top users, top endpoints, top destination, distribusi "
-    "tipe file, top matched item x destination details) dalam satu file, "
-    "sesuai filter yang sedang aktif di sidebar. PDF menggabungkan semua "
-    "tabel jadi satu dokumen; Excel memisahkan tiap ringkasan ke sheet-nya "
-    "sendiri."
+    "All the summaries above (Event Trend, Repeat Offenders, Content Aware: "
+    "Action, Event Type, Top Policy, Top Users, Top Endpoints, Top "
+    "Destination, File Type Distribution, Top Matched Item x Destination "
+    "Details, Destination Match, Policy x Destination x Event Type) in one "
+    "file, matching the filter currently active in the sidebar. PDF combines "
+    "all tables into a single document; Excel splits each summary into its "
+    "own sheet."
 )
 full_report_sections = [
-    ("Tren Event", trend_df),
+    ("Event Trend", trend_df),
     ("Repeat Offenders", repeat_offenders_df),
     ("Content Aware: Action", action_df),
     ("Event Type", event_type_df),
@@ -136,8 +159,10 @@ full_report_sections = [
     ("Top Users", top_users_df),
     ("Top Endpoints", top_endpoints_df),
     ("Top Destination", top_destination_df),
-    ("Distribusi Tipe File", file_type_df),
+    ("File Type Distribution", file_type_df),
     ("Top Matched Item x Destination Details", top_matched_dest_df),
+    ("Destination Match", destination_match_df),
+    ("Policy x Destination x Event Type", policy_destination_df),
 ]
 if any(df is not None and not df.empty for _, df in full_report_sections):
     fr1, fr2 = st.columns(2)
@@ -145,7 +170,7 @@ if any(df is not None and not df.empty for _, df in full_report_sections):
         "⬇️ Download Full Report (PDF)",
         export_utils.to_full_report_pdf_bytes(
             "Full Report - Netwrix EPP CAP",
-            [f"Total event (sesuai filter): {total:,}"],
+            [f"Total events (filtered): {total:,}"],
             full_report_sections,
         ),
         file_name="full_report.pdf",
@@ -159,42 +184,46 @@ if any(df is not None and not df.empty for _, df in full_report_sections):
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 else:
-    st.info("Tidak ada data ringkasan untuk digabung jadi Full Report.")
+    st.info("No summary data available to combine into a Full Report.")
 
 st.divider()
-st.subheader("Ekspor Per Ringkasan")
+st.subheader("Export Per Summary")
 
 report_choice = st.selectbox(
-    "Pilih data untuk diekspor",
+    "Choose data to export",
     [
-        "Tren Event",
+        "Event Trend",
         "Repeat Offenders",
-        "Ringkasan Action",
-        "Ringkasan Event Type",
+        "Content Aware: Action",
+        "Event Type",
         "Top Users",
         "Top Endpoints",
         "Top Policy",
         "Top Destination",
-        "Distribusi Tipe File",
+        "File Type Distribution",
         "Top Matched Item x Destination Details",
+        "Destination Match",
+        "Policy x Destination x Event Type",
     ],
 )
 export_map = {
-    "Tren Event": trend_df,
+    "Event Trend": trend_df,
     "Repeat Offenders": repeat_offenders_df,
-    "Ringkasan Action": action_df,
-    "Ringkasan Event Type": event_type_df,
+    "Content Aware: Action": action_df,
+    "Event Type": event_type_df,
     "Top Users": top_users_df,
     "Top Endpoints": top_endpoints_df,
     "Top Policy": top_policy_df,
-    "Distribusi Tipe File": file_type_df,
+    "File Type Distribution": file_type_df,
     "Top Matched Item x Destination Details": top_matched_dest_df,
     "Top Destination": top_destination_df,
+    "Destination Match": destination_match_df,
+    "Policy x Destination x Event Type": policy_destination_df,
 }
 export_df = export_map.get(report_choice)
 
 if export_df is None or export_df.empty:
-    st.info("Tidak ada data untuk pilihan ini (kemungkinan field belum dipetakan).")
+    st.info("No data available for this selection (the field may not be mapped).")
 else:
     c1, c2, c3 = st.columns(3)
     fname = report_choice.lower().replace(" ", "_")
@@ -211,7 +240,7 @@ else:
         "⬇️ PDF",
         export_utils.to_pdf_bytes(
             report_choice,
-            [f"Total event (semua filter): {total:,}"],
+            [f"Total events (filtered): {total:,}"],
             export_df,
         ),
         file_name=f"{fname}.pdf",

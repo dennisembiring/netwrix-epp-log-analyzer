@@ -186,13 +186,13 @@ def to_pdf_bytes(
         story.append(_data_table(shown_df, max_rows, avail_width))
         notes = []
         if len(df) > max_rows:
-            notes.append(f"Menampilkan {max_rows} dari {len(df)} baris.")
+            notes.append(f"Showing {max_rows} of {len(df)} rows.")
         if orig_cols > len(shown_df.columns):
             notes.append(
-                f"Menampilkan {len(shown_df.columns)} dari {orig_cols} kolom pertama."
+                f"Showing the first {len(shown_df.columns)} of {orig_cols} columns."
             )
         if notes:
-            notes.append("Gunakan export CSV/Excel untuk data lengkap.")
+            notes.append("Use CSV/Excel export for the complete data.")
             story.append(Spacer(1, 8))
             story.append(Paragraph(" ".join(notes), styles["Normal"]))
 
@@ -241,13 +241,13 @@ def to_full_report_pdf_bytes(
         story.append(_data_table(shown_df, max_rows, avail_width))
         notes = []
         if len(df) > max_rows:
-            notes.append(f"Menampilkan {max_rows} dari {len(df)} baris.")
+            notes.append(f"Showing {max_rows} of {len(df)} rows.")
         if orig_cols > len(shown_df.columns):
             notes.append(
-                f"Menampilkan {len(shown_df.columns)} dari {orig_cols} kolom pertama."
+                f"Showing the first {len(shown_df.columns)} of {orig_cols} columns."
             )
         if notes:
-            notes.append("Gunakan export Excel/CSV untuk data lengkap.")
+            notes.append("Use Excel/CSV export for the complete data.")
             story.append(Spacer(1, 4))
             story.append(Paragraph(" ".join(notes), styles["Normal"]))
         if i < len(sections) - 1:

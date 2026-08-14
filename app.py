@@ -8,9 +8,9 @@ con = db.get_connection()
 
 st.title("🛡️ " + config.APP_TITLE)
 st.caption(
-    "Import, kelola, dan analisis jutaan event ekspor CSV Content Aware "
-    "Protection (CAP) Netwrix Endpoint Protector tanpa batasan Excel, "
-    "didukung DuckDB."
+    "Import, manage, and analyze millions of Content Aware Protection (CAP) "
+    "CSV export events from Netwrix Endpoint Protector without Excel's "
+    "limitations, powered by DuckDB."
 )
 
 total_events = db.total_event_count(con)
@@ -18,34 +18,34 @@ datasets_df = db.list_datasets(con)
 latest_event = queries.latest_event_time(con, config.FIELD_MAPPING) if total_events else None
 
 c1, c2, c3 = st.columns(3)
-c1.metric("Total event", f"{total_events:,}")
-c2.metric("Dataset diimpor", len(datasets_df))
-c3.metric("Data terbaru", str(latest_event) if latest_event is not None else "-")
+c1.metric("Total Events", f"{total_events:,}")
+c2.metric("Datasets Imported", len(datasets_df))
+c3.metric("Latest Data", str(latest_event) if latest_event is not None else "-")
 
 st.divider()
 
 if total_events == 0:
     st.info(
-        "Belum ada data. Buka halaman **1 Import Data** di sidebar untuk "
-        "mengimpor file CSV hasil ekspor Content Aware Protection (CAP)."
+        "No data yet. Open the **1 Import Data** page in the sidebar to "
+        "import Content Aware Protection (CAP) export CSV files."
     )
 else:
-    st.success("Aplikasi siap digunakan. Gunakan menu di sidebar untuk mulai analisis.")
+    st.success("The app is ready to use. Use the sidebar menu to start your analysis.")
 
 st.markdown(
     """
-### Navigasi
-- **1 Import Data**: impor file CSV CAP (upload atau path lokal)
-- **2 Dashboard**: tren event, statistik Content Aware (Blocked/Allowed/Detected)
-- **3 Log Explorer**: pencarian full-text, filter multi-kriteria, tabel data besar
-- **4 SQL Query**: jalankan query SQL bebas terhadap seluruh data
-- **5 Reports**: ekspor hasil analisis ke CSV, Excel, atau PDF
+### Navigation
+- **1 Import Data**: import CAP CSV files (upload or local path)
+- **2 Dashboard**: event trends, Content Aware statistics (Blocked/Allowed/Detected)
+- **3 Log Explorer**: full-text search, multi-criteria filters, large data table
+- **4 SQL Query**: run free-form SQL queries against all the data
+- **5 Reports**: export analysis results to CSV, Excel, or PDF
 
-Kolom CSV yang didukung sudah tetap mengikuti skema ekspor CAP Netwrix
-Endpoint Protector, jadi tidak perlu pemetaan kolom manual.
+The supported CSV columns follow the fixed Netwrix Endpoint Protector CAP
+export schema, so no manual column mapping is needed.
 """
 )
 
 if not datasets_df.empty:
-    st.subheader("Dataset yang telah diimpor")
+    st.subheader("Imported Datasets")
     st.dataframe(datasets_df, width="stretch", hide_index=True)

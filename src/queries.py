@@ -265,6 +265,46 @@ def top_matched_item_destination(con, fs: FilterSet, mapping: dict, limit: int |
     return con.execute(q, fs.params).fetchdf()
 
 
+def top_destination_type_details(con, fs: FilterSet, mapping: dict, limit: int | None = None):
+    raw_type = mapping.get("destination_type")
+    raw_details = mapping.get("destination_details")
+    if not raw_type or not raw_details:
+        return con.sql("SELECT 1 WHERE FALSE").fetchdf()
+    limit_clause = f"LIMIT {limit}" if limit else ""
+    q = f"""
+        SELECT "{raw_type}" AS destination_type, "{raw_details}" AS destination_details, count(*) AS events
+        FROM events
+        WHERE {fs.sql()} AND "{raw_type}" IS NOT NULL AND "{raw_details}" IS NOT NULL
+        GROUP BY 1, 2
+        ORDER BY 3 DESC
+        {limit_clause}
+    """
+    return con.execute(q, fs.params).fetchdf()
+
+
+def policy_destination_breakdown(con, fs: FilterSet, mapping: dict, limit: int | None = 100):
+    raw_policy = mapping.get("policy")
+    raw_dest_type = mapping.get("destination_type")
+    raw_dest = mapping.get("destination")
+    raw_item_type = mapping.get("event_type")
+    if not raw_policy or not raw_dest_type or not raw_dest or not raw_item_type:
+        return con.sql("SELECT 1 WHERE FALSE").fetchdf()
+    limit_clause = f"LIMIT {limit}" if limit else ""
+    q = f"""
+        SELECT "{raw_policy}" AS policy, "{raw_dest_type}" AS destination_type,
+               "{raw_dest}" AS destination, "{raw_item_type}" AS event_type,
+               count(*) AS events
+        FROM events
+        WHERE {fs.sql()}
+          AND "{raw_policy}" IS NOT NULL AND "{raw_dest_type}" IS NOT NULL
+          AND "{raw_dest}" IS NOT NULL AND "{raw_item_type}" IS NOT NULL
+        GROUP BY 1, 2, 3, 4
+        ORDER BY 5 DESC
+        {limit_clause}
+    """
+    return con.execute(q, fs.params).fetchdf()
+
+
 def action_breakdown(con, fs: FilterSet, mapping: dict):
     raw = mapping.get("action")
     if not raw:
